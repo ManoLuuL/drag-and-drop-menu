@@ -4,39 +4,41 @@ import {
   DropResult,
   Droppable,
 } from "react-beautiful-dnd";
-import React, { useState } from "react";
+import { FC, useState } from "react";
 
-interface MenuItem {
-  id: string;
-  text: string;
-  subItems?: MenuItem[];
-}
+import { MENU_ITENS } from "./consts";
+import { MenuItem } from "./types";
 
 const reorder = (
   list: MenuItem[],
   startIndex: number,
-  endIndex: number
+  endIndex: number,
+  droppableId?: string
 ): MenuItem[] => {
   const result = Array.from(list);
-  const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
+
+  const isSubmenu = droppableId !== "menu";
+
+  if (isSubmenu) {
+    const parentIndex = result.findIndex((item) => item.id === droppableId);
+
+    if (parentIndex !== -1) {
+      const [parent] = result.splice(parentIndex, 1);
+      parent.subItems = parent.subItems || [];
+      const [removed] = parent.subItems.splice(startIndex, 1);
+      parent.subItems.splice(endIndex, 0, removed);
+      result.splice(parentIndex, 0, parent);
+    }
+  } else {
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+  }
+
   return result;
 };
 
-const Menu: React.FC = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([
-    { id: "1", text: "Item 1" },
-    {
-      id: "2",
-      text: "Item 2",
-      subItems: [
-        { id: "2.1", text: "Subitem 2.1" },
-        { id: "2.2", text: "Subitem 2.2" },
-        { id: "2.3", text: "Subitem 2.3" },
-      ],
-    },
-    { id: "3", text: "Item 3" },
-  ]);
+const Menu: FC = () => {
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITENS);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) {
@@ -46,7 +48,8 @@ const Menu: React.FC = () => {
     const items = reorder(
       menuItems,
       result.source.index,
-      result.destination.index
+      result.destination.index,
+      result.destination.droppableId
     );
 
     setMenuItems(items);
@@ -85,7 +88,7 @@ const Menu: React.FC = () => {
                         )}
                       </Draggable>
                     ))}
-                    {provided.placeholder}
+                    <div className="bg-red-500">{provided.placeholder}</div>
                   </ul>
                 )}
               </Droppable>
